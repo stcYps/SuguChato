@@ -51,3 +51,5 @@ firebase_options.dart
 /android
 /ios
 /windows
+/test
+/web
