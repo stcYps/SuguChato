@@ -95,7 +95,7 @@ class RoomScreen extends StatelessWidget {
                         .set(
                       {
                         "uid": userUid,
-                        "name": userDoc["name"],
+                        "name": userDoc["firstName"],
                       },
                     );
                     Routemaster.of(context).replace("/chat/" + roomId);

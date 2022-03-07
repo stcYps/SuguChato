@@ -3,10 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_firebase_chat_core/flutter_firebase_chat_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routemaster/routemaster.dart';
 import 'package:suguchato/provider.dart';
 import 'package:twitter_login/twitter_login.dart';
+import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({Key? key}) : super(key: key);
@@ -147,21 +149,19 @@ Future _onSignInAnonymous(
     BuildContext context, String name, WidgetRef ref) async {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
   try {
-    await firebaseAuth.signInAnonymously();
-    var user = firebaseAuth.currentUser;
+    final credential = await firebaseAuth.signInAnonymously();
 
     if (name == "") {
       name = "デフォルトユーザー";
     }
     ref.read(userProvider.notifier).update((state) => name);
 
-    FirebaseFirestore.instance
-        .collection("users")
-        .doc(user?.uid.toString())
-        .set({
-      "uid": user?.uid,
-      "name": name,
-    });
+    await FirebaseChatCore.instance.createUserInFirestore(
+      types.User(
+        firstName: name,
+        id: credential.user!.uid,
+      ),
+    );
 
     Routemaster.of(context).replace("/room");
   } catch (e) {
