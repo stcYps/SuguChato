@@ -85,19 +85,8 @@ class RoomScreen extends StatelessWidget {
                   final exist = await _checkExist(roomId);
                   if (exist) {
                     final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-                    final userUid = firebaseAuth.currentUser?.uid;
-                    final userDoc = await _getUser(userUid!);
-                    FirebaseFirestore.instance
-                        .collection("chat_room")
-                        .doc(roomId)
-                        .collection("users")
-                        .doc(userUid)
-                        .set(
-                      {
-                        "uid": userUid,
-                        "name": userDoc["firstName"],
-                      },
-                    );
+                    final userUid = firebaseAuth.currentUser!.uid;
+                    await _onUserJoin(userUid, roomId);
                     Routemaster.of(context).replace("/chat/" + roomId);
                   } else {
                     AwesomeDialog(
@@ -164,8 +153,10 @@ class RoomScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    btnOkOnPress: () =>
-                        _onRoomCreate(context, roomIdController.text),
+                    btnOkOnPress: () {
+                      final userUid = FirebaseAuth.instance.currentUser!.uid;
+                      _onRoomCreate(context, roomIdController.text, userUid);
+                    },
                     btnOkIcon: Icons.check_circle,
                   ).show()
                 },
@@ -221,13 +212,28 @@ class RoomScreen extends StatelessWidget {
   }
 }
 
-Future _onRoomCreate(BuildContext context, String roomId) async {
+Future _onUserJoin(String uid, String roomId) async {
+  final userDoc = await _getUser(uid);
+  FirebaseFirestore.instance
+      .collection("chat_room")
+      .doc(roomId)
+      .collection("users")
+      .doc(uid)
+      .set(
+    {
+      "uid": uid,
+      "name": userDoc["firstName"],
+    },
+  );
+}
+
+Future _onRoomCreate(BuildContext context, String roomId, String uid) async {
   final _roomId = roomId.padLeft(4, "0");
   FirebaseFirestore.instance.collection("chat_room").doc(_roomId).set({
     "room_id": _roomId,
     "createdAt": DateTime.now(),
   });
-
+  await _onUserJoin(uid, roomId);
   Routemaster.of(context).push("/chat/" + _roomId);
 }
 

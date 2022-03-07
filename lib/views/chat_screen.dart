@@ -267,12 +267,21 @@ class ChatScreen extends StatefulWidget {
   _ChatScreenState createState() => _ChatScreenState();
 }
 
-_onExitRoom(BuildContext context, String roomId, String uid) {
+_onExitRoom(BuildContext context, String roomId, String uid) async {
   FirebaseFirestore.instance
       .collection('chat_room')
       .doc(roomId)
       .collection("users")
       .doc(uid)
       .delete();
+
+  final doc = await FirebaseFirestore.instance
+      .collection("chat_room")
+      .doc(roomId)
+      .collection("users")
+      .get();
+  if (doc.docs.isEmpty) {
+    FirebaseFirestore.instance.collection('chat_room').doc(roomId).delete();
+  }
   Routemaster.of(context).replace("/room");
 }
