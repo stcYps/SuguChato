@@ -47,9 +47,3 @@ app.*.map.json
 
 .env
 firebase_options.dart
-
-/android
-/ios
-/windows
-/test
-/web
