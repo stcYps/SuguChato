@@ -10,37 +10,22 @@ import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 
 class _ChatScreenState extends State<ChatScreen> {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
+  late types.User _user;
 
   List<types.Message> _messages = [];
-  final _user = const types.User(id: "id", firstName: "name");
 
   void initState() {
+    _getUser();
     _getMessages();
     super.initState();
   }
 
-  // @override
-  // void didChangeAppLifecycleState(AppLifecycleState state) {
-  //   switch (state) {
-  //     case AppLifecycleState.inactive:
-  //       FirebaseFirestore.instance
-  //           .collection('chat_room')
-  //           .doc(widget.roomId)
-  //           .collection("users")
-  //           .doc(firebaseAuth.currentUser!.uid)
-  //           .delete();
-  //       break;
-  //     case AppLifecycleState.detached:
-  //       FirebaseFirestore.instance
-  //           .collection('chat_room')
-  //           .doc(widget.roomId)
-  //           .collection("users")
-  //           .doc(firebaseAuth.currentUser!.uid)
-  //           .delete();
-  //       break;
-  //     default:
-  //   }
-  // }
+  void _getUser() async {
+    final _uid = firebaseAuth.currentUser!.uid;
+    final getData =
+        await FirebaseFirestore.instance.collection('users').doc(_uid).get();
+    _user = types.User(id: _uid, firstName: getData.data()!["firstName"]);
+  }
 
   // firestoreからメッセージの内容をとってきて_messageにセット
   void _getMessages() async {
@@ -144,7 +129,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   )
                 ],
                 accountName: Text(
-                  ref.read(userProvider),
+                  _user.firstName!,
                   style: const TextStyle(fontSize: 24),
                 ),
                 accountEmail: const Text(
@@ -200,6 +185,7 @@ class _ChatScreenState extends State<ChatScreen> {
             .collection("chat_room")
             .doc(widget.roomId)
             .collection("contents")
+            .orderBy("createdAt", descending: true)
             .snapshots(),
         builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (!snapshot.hasData) {
@@ -222,11 +208,13 @@ class _ChatScreenState extends State<ChatScreen> {
             showUserNames: true,
             // メッセージの配列
             messages: snapshot.data!.docs
-                .map((d) => types.TextMessage(
-                    author: types.User(id: d['uid'], firstName: d['name']),
-                    createdAt: d['createdAt'],
-                    id: d['id'],
-                    text: d['text']))
+                .map(
+                  (d) => types.TextMessage(
+                      author: types.User(id: d['uid'], firstName: d['name']),
+                      createdAt: d['createdAt'],
+                      id: d['id'],
+                      text: d['text']),
+                )
                 .toList(),
             onPreviewDataFetched: _handlePreviewDataFetched,
             onSendPressed: _handleSendPressed,
