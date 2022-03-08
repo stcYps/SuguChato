@@ -224,7 +224,8 @@ class _ChatScreenState extends State<ChatScreen> {
     return TextField(
       controller: textController,
       keyboardType: TextInputType.multiline,
-      maxLines: null,
+      minLines: 1,
+      maxLines: 5,
       style: const TextStyle(
         color: Colors.white,
       ),
@@ -248,7 +249,7 @@ class _ChatScreenState extends State<ChatScreen> {
               return;
             }
             _handleSendPressed(
-              types.PartialText(text: textController.text),
+              types.PartialText(text: textController.text.trim()),
             );
             textController.text = "";
           },

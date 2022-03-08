@@ -10,6 +10,71 @@ class LoginScreen extends StatelessWidget {
 
   final nicknameController = TextEditingController();
 
+  // Future<void> _onSignInTwitter(BuildContext context) async {
+  //   // Twitterのアクセストークンを取得するためにTwitterLoginのインスタンスを作成する
+  //   final twitterLogin = TwitterLogin(
+  //     apiKey: dotenv.env["TWITTER_API_KEY"]!,
+  //     apiSecretKey: dotenv.env["TWITTER_SECRET_KEY"]!,
+  //     redirectURI: 'suguchato://',
+  //   );
+  //   final authResult = await twitterLogin.login();
+
+  //   switch (authResult.status) {
+  //     case TwitterLoginStatus.loggedIn:
+  //       // ログイン成功
+  //       debugPrint('====== Login success ======');
+  //       // アクセストークンを取得する
+  //       final credential = TwitterAuthProvider.credential(
+  //         accessToken: authResult.authToken!,
+  //         secret: authResult.authTokenSecret!,
+  //       );
+
+  //       final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
+  //       final userData = await firebaseAuth.signInWithCredential(credential);
+
+  //       await FirebaseChatCore.instance.createUserInFirestore(
+  //         types.User(
+  //           firstName: userData.user!.displayName,
+  //           id: userData.user!.uid,
+  //         ),
+  //       );
+
+  //       Routemaster.of(context).push("/room");
+  //       break;
+  //     case TwitterLoginStatus.cancelledByUser:
+  //       // ログインキャンセル
+  //       debugPrint('====== Login cancel ======');
+  //       break;
+  //     case TwitterLoginStatus.error:
+  //     case null:
+  //       // ログイン失敗
+  //       debugPrint('====== Login error ======');
+  //       break;
+  //   }
+  // }
+
+  Future _onSignInAnonymous(BuildContext context, String name) async {
+    final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
+    try {
+      final credential = await firebaseAuth.signInAnonymously();
+
+      if (name == "") {
+        name = "デフォルトユーザー";
+      }
+
+      await FirebaseChatCore.instance.createUserInFirestore(
+        types.User(
+          firstName: name,
+          id: credential.user!.uid,
+        ),
+      );
+
+      Routemaster.of(context).replace("/room");
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final double _width = MediaQuery.of(context).size.width;
@@ -29,7 +94,7 @@ class LoginScreen extends StatelessWidget {
                 height: 64,
               ),
               ElevatedButton(
-                onPressed: () => {},
+                onPressed: null,
                 child: const Text(
                   "Twitterでログインする",
                   style: TextStyle(
@@ -102,63 +167,5 @@ class LoginScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-// Future _onSignInTwitter(BuildContext context) async {
-//   // Twitterのアクセストークンを取得するためにTwitterLoginのインスタンスを作成する
-//   final twitterLogin = TwitterLogin(
-//     apiKey: dotenv.env["TWITTER_API_KEY"]!,
-//     apiSecretKey: dotenv.env["TWITTER_SECRET_KEY"]!,
-//     redirectURI: 'suguchato://',
-//   );
-//   final authResult = await twitterLogin.loginV2();
-
-//   switch (authResult.status) {
-//     case TwitterLoginStatus.loggedIn:
-//       // ログイン成功
-//       debugPrint('====== Login success ======');
-//       // アクセストークンを取得する
-//       final credential = TwitterAuthProvider.credential(
-//         accessToken: authResult.authToken!,
-//         secret: authResult.authTokenSecret!,
-//       );
-
-//       final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-//       firebaseAuth.signInWithCredential(credential);
-
-//       Routemaster.of(context).push("/room");
-//       break;
-//     case TwitterLoginStatus.cancelledByUser:
-//       // ログインキャンセル
-//       debugPrint('====== Login cancel ======');
-//       break;
-//     case TwitterLoginStatus.error:
-//     case null:
-//       // ログイン失敗
-//       debugPrint('====== Login error ======');
-//       break;
-//   }
-// }
-
-Future _onSignInAnonymous(BuildContext context, String name) async {
-  final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-  try {
-    final credential = await firebaseAuth.signInAnonymously();
-
-    if (name == "") {
-      name = "デフォルトユーザー";
-    }
-
-    await FirebaseChatCore.instance.createUserInFirestore(
-      types.User(
-        firstName: name,
-        id: credential.user!.uid,
-      ),
-    );
-
-    Routemaster.of(context).replace("/room");
-  } catch (e) {
-    debugPrint(e.toString());
   }
 }
