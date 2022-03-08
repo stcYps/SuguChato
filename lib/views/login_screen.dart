@@ -1,13 +1,8 @@
 import 'package:awesome_dialog/awesome_dialog.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_firebase_chat_core/flutter_firebase_chat_core.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routemaster/routemaster.dart';
-import 'package:suguchato/provider.dart';
-import 'package:twitter_login/twitter_login.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 
 class LoginScreen extends StatelessWidget {
@@ -19,43 +14,44 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final double _width = MediaQuery.of(context).size.width;
     return Scaffold(
-      backgroundColor: const Color.fromRGBO(110, 255, 125, 1),
-      resizeToAvoidBottomInset: false,
+      backgroundColor: const Color.fromRGBO(0, 157, 97, 1),
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              "assets/splash.png",
-              width: _width * 0.8,
-            ),
-            const SizedBox(
-              height: 64,
-            ),
-            ElevatedButton(
-              onPressed: () => {},
-              child: const Text(
-                "Twitterでログインする",
-                style: TextStyle(
-                  color: Color.fromRGBO(110, 255, 125, 1),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                "assets/splash.png",
+                width: _width * 0.8,
+              ),
+              const SizedBox(
+                height: 64,
+              ),
+              ElevatedButton(
+                onPressed: () => {},
+                child: const Text(
+                  "Twitterでログインする",
+                  style: TextStyle(
+                    color: Color.fromRGBO(0, 157, 97, 1),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  primary: Colors.white,
+                  fixedSize: Size(_width * 0.8, 48),
+                  shape: const StadiumBorder(),
+                  elevation: 0,
                 ),
               ),
-              style: ElevatedButton.styleFrom(
-                primary: Colors.white,
-                fixedSize: Size(_width * 0.8, 48),
-                shape: const StadiumBorder(),
-                elevation: 0,
+              const SizedBox(
+                height: 16,
               ),
-            ),
-            const SizedBox(
-              height: 16,
-            ),
-            Consumer(
-              builder: (context, ref, child) => OutlinedButton(
+              OutlinedButton(
                 onPressed: () {
                   AwesomeDialog(
+                    width: 400,
                     context: context,
                     headerAnimationLoop: false,
                     dialogType: DialogType.NO_HEADER,
@@ -72,8 +68,8 @@ class LoginScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    btnOkOnPress: () => _onSignInAnonymous(
-                        context, nicknameController.text, ref),
+                    btnOkOnPress: () =>
+                        _onSignInAnonymous(context, nicknameController.text),
                     btnOkIcon: Icons.check_circle,
                   ).show();
                 },
@@ -91,62 +87,61 @@ class LoginScreen extends StatelessWidget {
                   shape: const StadiumBorder(),
                 ),
               ),
-            ),
-            const SizedBox(
-              height: 4,
-            ),
-            const Text(
-              "ゲストでログインすると一部機能が制限されます",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
+              const SizedBox(
+                height: 4,
               ),
-            )
-          ],
+              const Text(
+                "ゲストでログインすると一部機能が制限されます",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
+              )
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-Future _onSignInTwitter(BuildContext context) async {
-  // Twitterのアクセストークンを取得するためにTwitterLoginのインスタンスを作成する
-  final twitterLogin = TwitterLogin(
-    apiKey: dotenv.env["TWITTER_API_KEY"]!,
-    apiSecretKey: dotenv.env["TWITTER_SECRET_KEY"]!,
-    redirectURI: 'suguchato://',
-  );
-  final authResult = await twitterLogin.loginV2();
+// Future _onSignInTwitter(BuildContext context) async {
+//   // Twitterのアクセストークンを取得するためにTwitterLoginのインスタンスを作成する
+//   final twitterLogin = TwitterLogin(
+//     apiKey: dotenv.env["TWITTER_API_KEY"]!,
+//     apiSecretKey: dotenv.env["TWITTER_SECRET_KEY"]!,
+//     redirectURI: 'suguchato://',
+//   );
+//   final authResult = await twitterLogin.loginV2();
 
-  switch (authResult.status) {
-    case TwitterLoginStatus.loggedIn:
-      // ログイン成功
-      debugPrint('====== Login success ======');
-      // アクセストークンを取得する
-      final credential = TwitterAuthProvider.credential(
-        accessToken: authResult.authToken!,
-        secret: authResult.authTokenSecret!,
-      );
+//   switch (authResult.status) {
+//     case TwitterLoginStatus.loggedIn:
+//       // ログイン成功
+//       debugPrint('====== Login success ======');
+//       // アクセストークンを取得する
+//       final credential = TwitterAuthProvider.credential(
+//         accessToken: authResult.authToken!,
+//         secret: authResult.authTokenSecret!,
+//       );
 
-      final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-      firebaseAuth.signInWithCredential(credential);
+//       final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
+//       firebaseAuth.signInWithCredential(credential);
 
-      Routemaster.of(context).push("/room");
-      break;
-    case TwitterLoginStatus.cancelledByUser:
-      // ログインキャンセル
-      debugPrint('====== Login cancel ======');
-      break;
-    case TwitterLoginStatus.error:
-    case null:
-      // ログイン失敗
-      debugPrint('====== Login error ======');
-      break;
-  }
-}
+//       Routemaster.of(context).push("/room");
+//       break;
+//     case TwitterLoginStatus.cancelledByUser:
+//       // ログインキャンセル
+//       debugPrint('====== Login cancel ======');
+//       break;
+//     case TwitterLoginStatus.error:
+//     case null:
+//       // ログイン失敗
+//       debugPrint('====== Login error ======');
+//       break;
+//   }
+// }
 
-Future _onSignInAnonymous(
-    BuildContext context, String name, WidgetRef ref) async {
+Future _onSignInAnonymous(BuildContext context, String name) async {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
   try {
     final credential = await firebaseAuth.signInAnonymously();
@@ -154,7 +149,6 @@ Future _onSignInAnonymous(
     if (name == "") {
       name = "デフォルトユーザー";
     }
-    ref.read(userProvider.notifier).update((state) => name);
 
     await FirebaseChatCore.instance.createUserInFirestore(
       types.User(

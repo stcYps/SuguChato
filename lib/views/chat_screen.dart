@@ -3,57 +3,74 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:routemaster/routemaster.dart';
-import 'package:suguchato/provider.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
+
+class ChatScreen extends StatefulWidget {
+  final String roomId;
+  const ChatScreen({required this.roomId, Key? key}) : super(key: key);
+
+  @override
+  _ChatScreenState createState() => _ChatScreenState();
+}
 
 class _ChatScreenState extends State<ChatScreen> {
   final FirebaseAuth firebaseAuth = FirebaseAuth.instance;
-  late types.User _user;
+  final textController = TextEditingController();
+  types.User _user = const types.User(id: "", firstName: "");
 
-  List<types.Message> _messages = [];
+  // List<types.Message> _messages = [];
 
+  @override
   void initState() {
     _getUser();
-    _getMessages();
     super.initState();
   }
 
-  void _getUser() async {
-    final _uid = firebaseAuth.currentUser!.uid;
+  Future<void> _getUser() async {
+    var firebaseUser = FirebaseAuth.instance.currentUser;
+    firebaseUser ??= await FirebaseAuth.instance.authStateChanges().first;
+    final _uid = firebaseUser!.uid;
     final getData =
         await FirebaseFirestore.instance.collection('users').doc(_uid).get();
-    _user = types.User(id: _uid, firstName: getData.data()!["firstName"]);
+    setState(() {
+      _user = types.User(id: _uid, firstName: getData.data()!["firstName"]);
+    });
   }
 
-  // firestoreからメッセージの内容をとってきて_messageにセット
-  void _getMessages() async {
-    final getData = await FirebaseFirestore.instance
+  void _onExitRoom(BuildContext context, String roomId, String uid) async {
+    FirebaseFirestore.instance
         .collection('chat_room')
-        .doc(widget.roomId)
-        .collection('contents')
+        .doc(roomId)
+        .collection("users")
+        .doc(uid)
+        .delete();
+
+    final doc = await FirebaseFirestore.instance
+        .collection("chat_room")
+        .doc(roomId)
+        .collection("users")
         .get();
-
-    final message = getData.docs
-        .map((d) => types.TextMessage(
-            author:
-                types.User(id: d.data()['uid'], firstName: d.data()['name']),
-            createdAt: d.data()['createdAt'],
-            id: d.data()['id'],
-            text: d.data()['text']))
-        .toList();
-
-    setState(() {
-      _messages = [...message];
-    });
+    if (doc.docs.isEmpty) {
+      FirebaseFirestore.instance
+          .collection('chat_room')
+          .doc(roomId)
+          .collection("contents")
+          .get()
+          .then(
+        (snapshot) {
+          for (DocumentSnapshot ds in snapshot.docs) {
+            ds.reference.delete();
+          }
+        },
+      );
+      FirebaseFirestore.instance.collection('chat_room').doc(roomId).delete();
+    }
+    Routemaster.of(context).replace("/room");
   }
 
   // メッセージ内容をfirestoreにセット
   void _addMessage(types.TextMessage message) async {
-    setState(() {
-      _messages.insert(0, message);
-    });
     await FirebaseFirestore.instance
         .collection('chat_room')
         .doc(widget.roomId)
@@ -64,21 +81,6 @@ class _ChatScreenState extends State<ChatScreen> {
       'createdAt': message.createdAt,
       'id': message.id,
       'text': message.text,
-    });
-  }
-
-  // リンク添付時にリンクプレビューを表示する
-  void _handlePreviewDataFetched(
-    types.TextMessage message,
-    types.PreviewData previewData,
-  ) {
-    final index = _messages.indexWhere((element) => element.id == message.id);
-    final updatedMessage = _messages[index].copyWith(previewData: previewData);
-
-    WidgetsBinding.instance?.addPostFrameCallback((_) {
-      setState(() {
-        _messages[index] = updatedMessage;
-      });
     });
   }
 
@@ -114,33 +116,31 @@ class _ChatScreenState extends State<ChatScreen> {
       drawer: Drawer(
         child: Column(
           children: [
-            Consumer(
-              builder: (context, ref, child) => UserAccountsDrawerHeader(
-                currentAccountPicture: const CircleAvatar(
-                  backgroundImage: AssetImage("assets/default_icon.png"),
-                ),
-                otherAccountsPictures: [
-                  IconButton(
-                    onPressed: () => {},
-                    icon: const Icon(
-                      Icons.settings,
-                      color: Color.fromARGB(255, 245, 245, 245),
-                    ),
-                  )
-                ],
-                accountName: Text(
-                  _user.firstName!,
-                  style: const TextStyle(fontSize: 24),
-                ),
-                accountEmail: const Text(
-                  "ゲストログイン",
-                  style: TextStyle(fontSize: 12),
-                ),
-                decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 0, 194, 65),
-                  borderRadius: BorderRadius.only(
-                    bottomRight: Radius.circular(40),
+            UserAccountsDrawerHeader(
+              currentAccountPicture: const CircleAvatar(
+                backgroundImage: AssetImage("assets/default_icon.png"),
+              ),
+              otherAccountsPictures: [
+                IconButton(
+                  onPressed: () => {},
+                  icon: const Icon(
+                    Icons.settings,
+                    color: Color.fromARGB(255, 245, 245, 245),
                   ),
+                )
+              ],
+              accountName: Text(
+                _user.firstName!,
+                style: const TextStyle(fontSize: 24),
+              ),
+              accountEmail: const Text(
+                "ゲストログイン",
+                style: TextStyle(fontSize: 12),
+              ),
+              decoration: const BoxDecoration(
+                color: Color.fromARGB(255, 0, 194, 65),
+                borderRadius: BorderRadius.only(
+                  bottomRight: Radius.circular(40),
                 ),
               ),
             ),
@@ -153,6 +153,7 @@ class _ChatScreenState extends State<ChatScreen> {
             TextButton(
               onPressed: () => {
                 AwesomeDialog(
+                  width: 400,
                   context: context,
                   dialogType: DialogType.WARNING,
                   headerAnimationLoop: false,
@@ -197,16 +198,11 @@ class _ChatScreenState extends State<ChatScreen> {
             return const Text('Something went wrong');
           }
           return Chat(
-            theme: const DefaultChatTheme(
-              // メッセージ入力欄の色
-              inputBackgroundColor: Color.fromARGB(255, 0, 194, 65),
-              // 送信ボタン
-              sendButtonIcon: Icon(Icons.send),
-              sendingIcon: Icon(Icons.update_outlined),
+            customBottomWidget: buildChatForm(),
+            l10n: const ChatL10nEn(
+              emptyChatPlaceholder: "まだメッセージがありません",
             ),
-            // ユーザーの名前を表示するかどうか
             showUserNames: true,
-            // メッセージの配列
             messages: snapshot.data!.docs
                 .map(
                   (d) => types.TextMessage(
@@ -216,11 +212,51 @@ class _ChatScreenState extends State<ChatScreen> {
                       text: d['text']),
                 )
                 .toList(),
-            onPreviewDataFetched: _handlePreviewDataFetched,
             onSendPressed: _handleSendPressed,
             user: _user,
           );
         },
+      ),
+    );
+  }
+
+  Widget buildChatForm() {
+    return TextField(
+      controller: textController,
+      keyboardType: TextInputType.multiline,
+      maxLines: null,
+      style: const TextStyle(
+        color: Colors.white,
+      ),
+      decoration: InputDecoration(
+        border: const OutlineInputBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(20),
+          ),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+        fillColor: const Color.fromARGB(255, 0, 194, 65),
+        filled: true,
+        hintText: "メッセージを入力",
+        hintStyle: const TextStyle(color: Colors.white70),
+        hoverColor: const Color.fromARGB(255, 0, 194, 65),
+        isCollapsed: true,
+        suffixIcon: IconButton(
+          onPressed: () {
+            if (textController.text == "") {
+              return;
+            }
+            _handleSendPressed(
+              types.PartialText(text: textController.text),
+            );
+            textController.text = "";
+          },
+          icon: const Icon(
+            Icons.send,
+            color: Colors.black,
+          ),
+        ),
       ),
     );
   }
@@ -257,31 +293,4 @@ class _ChatScreenState extends State<ChatScreen> {
       },
     );
   }
-}
-
-class ChatScreen extends StatefulWidget {
-  final String roomId;
-  const ChatScreen({required this.roomId});
-
-  @override
-  _ChatScreenState createState() => _ChatScreenState();
-}
-
-_onExitRoom(BuildContext context, String roomId, String uid) async {
-  FirebaseFirestore.instance
-      .collection('chat_room')
-      .doc(roomId)
-      .collection("users")
-      .doc(uid)
-      .delete();
-
-  final doc = await FirebaseFirestore.instance
-      .collection("chat_room")
-      .doc(roomId)
-      .collection("users")
-      .get();
-  if (doc.docs.isEmpty) {
-    FirebaseFirestore.instance.collection('chat_room').doc(roomId).delete();
-  }
-  Routemaster.of(context).replace("/room");
 }
