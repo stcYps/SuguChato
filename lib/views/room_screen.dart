@@ -45,7 +45,7 @@ class _RoomScreenState extends State<RoomScreen> {
 
   Future _onSignOut(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
-    Routemaster.of(context).replace("/");
+    Routemaster.of(context).pop();
   }
 
   Future<bool> _checkExist(String roomId) async {
