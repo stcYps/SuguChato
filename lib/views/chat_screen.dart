@@ -23,8 +23,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void initState() {
+    Future(() async {
+      var loginFlag = await _checkExist(widget.roomId);
+      if (!loginFlag) {
+        Routemaster.of(context).pop();
+      }
+    });
     _getUser();
     super.initState();
+  }
+
+  Future<bool> _checkExist(String roomId) async {
+    final doc = await FirebaseFirestore.instance
+        .collection("chat_room")
+        .doc(roomId)
+        .get();
+    return doc.exists;
   }
 
   Future<void> _getUser() async {
