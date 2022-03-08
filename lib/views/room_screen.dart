@@ -35,13 +35,12 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   Future _onRoomCreate(BuildContext context, String roomId, String uid) async {
-    final _roomId = roomId.padLeft(4, "0");
-    FirebaseFirestore.instance.collection("chat_room").doc(_roomId).set({
-      "room_id": _roomId,
+    FirebaseFirestore.instance.collection("chat_room").doc(roomId).set({
+      "room_id": roomId,
       "createdAt": DateTime.now(),
     });
     await _onUserJoin(uid, roomId);
-    Routemaster.of(context).push("/chat/" + _roomId);
+    Routemaster.of(context).push("/chat/" + roomId);
   }
 
   Future _onSignOut(BuildContext context) async {
@@ -216,9 +215,24 @@ class _RoomScreenState extends State<RoomScreen> {
                           ],
                         ),
                       ),
-                      btnOkOnPress: () {
-                        final userUid = FirebaseAuth.instance.currentUser!.uid;
-                        _onRoomCreate(context, roomIdController.text, userUid);
+                      btnOkOnPress: () async {
+                        final roomId = roomIdController.text.padLeft(4, "0");
+                        final exist = await _checkExist(roomId);
+                        if (!exist) {
+                          final userUid =
+                              FirebaseAuth.instance.currentUser!.uid;
+                          _onRoomCreate(context, roomId, userUid);
+                        } else {
+                          AwesomeDialog(
+                            width: 400,
+                            context: context,
+                            headerAnimationLoop: false,
+                            dialogType: DialogType.NO_HEADER,
+                            desc: "指定された番号のルームは存在しています",
+                            btnOkOnPress: () {},
+                            btnOkIcon: Icons.check_circle,
+                          ).show();
+                        }
                       },
                       btnOkIcon: Icons.check_circle,
                     ).show()
@@ -260,6 +274,7 @@ class _RoomScreenState extends State<RoomScreen> {
                     "ログアウト",
                     style: TextStyle(
                       color: Colors.black54,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   style: TextButton.styleFrom(

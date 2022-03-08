@@ -51,6 +51,9 @@ dependencies:
   mime: ^1.0.1
   http: ^0.13.4
   universal_platform: ^1.0.0+1
+  provider: ^6.0.2
+  oauth1: ^2.0.0
+  webview_flutter: ^3.0.1
 
 dev_dependencies:
   flutter_test:
